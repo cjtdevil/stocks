@@ -1,14 +1,11 @@
 library(tidyverse);library(quantmod);library(ggplot2);library(foreach);library(ggrepel)
+options("getSymbols.warning4.0"=FALSE)
 
 vanguard_sectors = c("VOX","VCR","VDC","VDE","VFH","VHT","VIS","VGT","VAW","VNQ","VPU")
 
 get_stocks = function(stocks,from,to){
   
   .get_stocks = function(stock){
-    
-    sp <- getSymbols("SPY", src = "yahoo", from = from, to = to, auto.assign = FALSE) %>%
-      data.frame() %>% rownames_to_column("date") %>% 
-      `colnames<-`(tolower(colnames(.)))
     
     dxtf <- getSymbols(stock, src = "yahoo", from = from, to = to, auto.assign = FALSE) %>% 
       data.frame() %>% rownames_to_column("date") %>% 
@@ -17,19 +14,23 @@ get_stocks = function(stocks,from,to){
       mutate(period_open = ifelse(date==min(date),open,NA)) %>%
       fill(period_open) %>%
       mutate(change = round(close - period_open,2),
-             percent_change = round(100*change/open,2)) %>%
-      left_join(sp,by="date")
-    
-    
+             percent_change = round(100*change/open,2))
 
     return(dxtf)
   }
   
+  
+  
+  sp <- getSymbols("SPY", src = "yahoo", from = from, to = to, auto.assign = FALSE) %>%
+    data.frame() %>% rownames_to_column("date") %>% 
+    `colnames<-`(tolower(colnames(.)))
+  
   out <- foreach(i=stocks) %do%
     .get_stocks(i) %>% 
-    bind_rows %>%
+    bind_rows %>%    
+    left_join(sp,by="date") %>%
     mutate(date = as.Date(date))
-  
+
   return(out)
 }
 
